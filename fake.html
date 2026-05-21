@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>JazzCash Receipt</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #111;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  padding-bottom: 20px;
+}
+
+/* ══════════════════════════════
+   PHONE SHELL
+══════════════════════════════ */
+#phone {
+  width: 100%;
+  max-width: 400px;
+  background: #1a1a1a;
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ══════════════════════════════
+   STATUS BAR
+══════════════════════════════ */
+#statusBar {
+  background: #2e7d32;
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 14px 5px;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+  z-index: 50;
+}
+#statusBar .left { display: flex; align-items: center; gap: 5px; }
+#statusBar .right { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+
+/* ══════════════════════════════
+   MAIN DARK AREA
+══════════════════════════════ */
+#mainArea {
+  background: #1a1a1a;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 22px 0 0;
+  position: relative;
+}
+
+#closeBtn {
+  position: absolute;
+  top: 14px; right: 16px;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  z-index: 30;
+  line-height: 1;
+  background: none;
+  border: none;
+}
+
+/* ══════════════════════════════
+   TICK ICON  — absolute center
+══════════════════════════════ */
+#tickWrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 25;
+  flex-shrink: 0;
+}
+
+#checkCircle {
+  width: 62px;
+  height: 62px;
+  background: #f5c300;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 24px rgba(245,195,0,0.38);
+  flex-shrink: 0;
+}
+#checkCircle svg {
+  width: 34px;
+  height: 34px;
+  display: block;
+}
+
+/* ══════════════════════════════
+   RECEIPT OUTER WRAPPER
+   — 88 % wide, centered
+   — controls notch overflow
+══════════════════════════════ */
+#receiptWrapper {
+  width: 88%;
+  max-width: 352px;
+  position: relative;
+  margin-top: 40px;   /* ← 40 px gap between tick & card top */
+  z-index: 5;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════
+   SIDE SEMI-CIRCLE NOTCHES
+   (positioned by JS at notchRow center)
+══════════════════════════════ */
+.notch {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  background: #1a1a1a;
+  border-radius: 50%;
+  z-index: 20;
+  /* top set dynamically */
+  transform: translateY(-50%);
+}
+#notchLeft  { left:  -15px; }
+#notchRight { right: -15px; }
+
+/* ══════════════════════════════
+   RECEIPT CARD
+══════════════════════════════ */
+#receiptCard {
+  width: 100%;
+  background: #fff;
+  position: relative;
+}
+
+/* ── Sawtooth TOP  (teeth point upward into dark bg) ── */
+#sawTop {
+  width: 100%;
+  height: 8px;
+  flex-shrink: 0;
+  background-image:
+    linear-gradient(135deg, #1a1a1a 33.34%, transparent 33.34%),
+    linear-gradient(225deg, #1a1a1a 33.34%, transparent 33.34%);
+  background-size: 6px 8px;
+  background-repeat: repeat-x;
+  background-position: 0 0;
+  background-color: #ffffff;
+  display: block;
+}
+
+/* ── Sawtooth BOTTOM  (teeth point downward into dark bg) ── */
+#sawBottom {
+  width: 100%;
+  height: 8px;
+  flex-shrink: 0;
+  background-image:
+    linear-gradient(315deg, #1a1a1a 33.34%, transparent 33.34%),
+    linear-gradient(45deg,  #1a1a1a 33.34%, transparent 33.34%);
+  background-size: 6px 8px;
+  background-repeat: repeat-x;
+  background-position: 0 0;
+  background-color: #ffffff;
+  display: block;
+}
+
+/* ── Card inner padding area ── */
+#cardBody {
+  background: #fff;
+  padding: 24px 22px 0;
+}
+
+/* ══════════════════════════════
+   RECEIPT TYPOGRAPHY
+══════════════════════════════ */
+.receipt-title {
+  text-align: center;
+  font-size: 19px;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 5px;
+  letter-spacing: 0.2px;
+}
+.receipt-tid {
+  text-align: center;
+  font-size: 13px;
+  color: #999;
+  margin-bottom: 2px;
+}
+.receipt-date {
+  text-align: center;
+  font-size: 13px;
+  color: #999;
+  margin-bottom: 14px;
+}
+.divider-solid {
+  border: none;
+  border-top: 1px solid #ebebeb;
+  margin: 0 0 14px;
+}
+.receipt-amount {
+  text-align: center;
+  font-size: 38px;
+  font-weight: 800;
+  color: #111;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  line-height: 1;
+}
+.receipt-amount .cents {
+  font-size: 22px;
+  font-weight: 700;
+}
+.receipt-subtitle {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 16px;
+}
+.rows-top-border { border-top: 1px solid #ebebeb; margin-bottom: 4px; }
+
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-top: 1px solid #f2f2f2;
+}
+.receipt-row:first-child { border-top: none; }
+
+.row-label {
+  font-size: 13px;
+  color: #999;
+  padding-top: 1px;
+  flex-shrink: 0;
+}
+.row-value {
+  font-size: 13px;
+  color: #222;
+  font-weight: 500;
+  text-align: right;
+  line-height: 1.55;
+}
+
+/* ══════════════════════════════
+   NOTCH DIVIDER ROW
+   — the dashed line between notches
+══════════════════════════════ */
+#notchRow {
+  position: relative;
+  width: calc(100% + 44px);   /* extend past card edges so notches sit over it */
+  margin-left: -22px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  margin-top: 14px;
+}
+
+/* Dashed line — starts/ends 15 px in from each edge (clears the notch) */
+.dash-line {
+  flex: 1;
+  border: none;
+  border-top: 1.8px dashed #cccccc;
+  margin: 0 15px;
+}
+
+/* ══════════════════════════════
+   SECURE FOOTER
+══════════════════════════════ */
+#secureFooter {
+  background: #fff;
+  padding: 14px 22px 22px;
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.secure-text {
+  font-size: 13px;
+  color: #666;
+}
+.jc-real-logo {
+  height: 22px;
+  width: auto;
+  vertical-align: middle;
+  object-fit: contain;
+}
+
+/* ══════════════════════════════
+   ACTION BUTTONS
+══════════════════════════════ */
+#actionBtns {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 28px 0 16px;
+  background: #1a1a1a;
+  width: 100%;
+}
+.action-btn {
+  background: #2a2a2a;
+  color: #ccc;
+  border: 1.5px solid #444;
+  border-radius: 50px;
+  padding: 10px 30px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.action-btn:hover { background: #383838; }
+.action-btn svg { width: 18px; height: 18px; }
+
+/* ══════════════════════════════
+   ANDROID NAV BAR
+══════════════════════════════ */
+#androidNav {
+  background: #1a1a1a;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 0 10px;
+  border-top: 1px solid #2a2a2a;
+}
+.nav-btn {
+  color: #bbb;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 22px;
+  transition: color 0.15s;
+}
+.nav-btn:hover { color: #fff; }
+
+/* ══════════════════════════════
+   EDIT FORM  (below phone)
+══════════════════════════════ */
+#editForm {
+  width: 100%;
+  max-width: 400px;
+  background: #111;
+  padding: 18px 16px 28px;
+  border-top: 2px solid #2a2a2a;
+}
+#editForm h3 {
+  color: #f5c300;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group label {
+  font-size: 11px;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 600;
+}
+.form-group input {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  padding: 7px 10px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+.form-group input:focus { border-color: #f5c300; }
+
+#saveImgBtn {
+  margin-top: 14px;
+  width: 100%;
+  background: #f5c300;
+  color: #111;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+#saveImgBtn:hover  { background: #ffd700; }
+#saveImgBtn:active { transform: scale(0.98); }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     PHONE FRAME
+════════════════════════════════════════ -->
+<div id="phone">
+
+  <!-- STATUS BAR -->
+  <div id="statusBar">
+    <div class="left">
+      <span id="liveClock">11:46</span>
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="white">
+        <polygon points="5,0 10,10 0,10"/>
+      </svg>
+      <svg width="12" height="12" fill="none" stroke="white" stroke-width="1.5" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+      </svg>
+    </div>
+    <div class="right">
+      <!-- Signal bars -->
+      <svg width="14" height="10" viewBox="0 0 20 14" fill="none">
+        <rect x="0"    y="8" width="3" height="6"  rx="0.5" fill="white" opacity="0.4"/>
+        <rect x="4.5"  y="5" width="3" height="9"  rx="0.5" fill="white" opacity="0.6"/>
+        <rect x="9"    y="2" width="3" height="12" rx="0.5" fill="white" opacity="0.8"/>
+        <rect x="13.5" y="0" width="3" height="14" rx="0.5" fill="white"/>
+      </svg>
+      <span style="font-size:10px;font-weight:700;letter-spacing:.5px">3G</span>
+      <!-- Wifi bars -->
+      <svg width="14" height="10" viewBox="0 0 20 14" fill="none">
+        <rect x="0"    y="6" width="3" height="8"  rx="0.5" fill="white"/>
+        <rect x="4.5"  y="4" width="3" height="10" rx="0.5" fill="white"/>
+        <rect x="9"    y="2" width="3" height="12" rx="0.5" fill="white"/>
+        <rect x="13.5" y="0" width="3" height="14" rx="0.5" fill="white"/>
+      </svg>
+      <span style="font-size:9px;font-weight:600">19.7K/S</span>
+      <!-- Battery -->
+      <div style="display:flex;align-items:center;gap:1px">
+        <div style="border:1.5px solid #fff;border-radius:2px;padding:1.5px 2px;display:flex;align-items:center">
+          <div id="battFill" style="width:16px;height:8px;background:#fff;border-radius:1px;"></div>
+        </div>
+        <div style="width:2px;height:5px;background:#fff;border-radius:0 1px 1px 0;"></div>
+        <span style="font-size:10px;margin-left:2px" id="battPct">27</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN DARK AREA -->
+  <div id="mainArea">
+
+    <button id="closeBtn">✕</button>
+
+    <!-- ① TICK ICON — perfectly centered, floating above card -->
+    <div id="tickWrapper">
+      <div id="checkCircle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white"
+             stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ② RECEIPT WRAPPER — 88 % wide, 40 px below tick -->
+    <div id="receiptWrapper">
+
+      <!-- Side notches (JS positions them at notchRow center) -->
+      <div id="notchLeft"  class="notch"></div>
+      <div id="notchRight" class="notch"></div>
+
+      <!-- RECEIPT CARD -->
+      <div id="receiptCard">
+
+        <!-- Sawtooth top edge -->
+        <div id="sawTop"></div>
+
+        <!-- Card content -->
+        <div id="cardBody">
+          <p class="receipt-title">Transaction Successful</p>
+          <p class="receipt-tid">TID: <span id="dispTid">384097766</span></p>
+          <p class="receipt-date">
+            On <span id="dispDate">May 20, 2026</span> at <span id="dispTime">11:46</span>
+          </p>
+
+          <hr class="divider-solid">
+
+          <p class="receipt-amount">
+            Rs.&nbsp;<span id="dispAmt">500</span><span class="cents">.<span id="dispCents">00</span></span>
+          </p>
+          <p class="receipt-subtitle">Transferred to Jazzcash</p>
+
+          <div class="rows-top-border"></div>
+
+          <div class="receipt-row" style="border-top:none;">
+            <span class="row-label">Fee</span>
+            <span class="row-value" id="dispFee">0.00</span>
+          </div>
+          <div class="receipt-row">
+            <span class="row-label">To</span>
+            <span class="row-value">
+              <span id="dispToName">Muhammad Yaser</span><br>
+              <span id="dispToNum">03710614607</span>
+            </span>
+          </div>
+          <div class="receipt-row">
+            <span class="row-label">From</span>
+            <span class="row-value">
+              <span id="dispFromName">Shawaiz Aawan</span><br>
+              <span id="dispFromNum">03033655302</span>
+            </span>
+          </div>
+
+          <!-- ③ NOTCH ROW — dashed line between notches -->
+          <div id="notchRow">
+            <div class="dash-line"></div>
+          </div>
+        </div><!-- /cardBody -->
+
+        <!-- Secure footer -->
+        <div id="secureFooter">
+          <span class="secure-text">Securely paid via</span>
+          <img class="jc-real-logo" id="jcLogo" alt="JazzCash">
+        </div>
+
+        <!-- Sawtooth bottom edge -->
+        <div id="sawBottom"></div>
+
+      </div><!-- /receiptCard -->
+    </div><!-- /receiptWrapper -->
+
+    <!-- ACTION BUTTONS -->
+    <div id="actionBtns">
+      <button class="action-btn" onclick="shareReceipt()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"/>
+          <circle cx="6" cy="12" r="3"/>
+          <circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+        Share
+      </button>
+      <button class="action-btn" onclick="saveReceipt()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Save
+      </button>
+    </div>
+
+  </div><!-- /mainArea -->
+
+  <!-- ANDROID NAV -->
+  <div id="androidNav">
+    <div class="nav-btn">&#9645;</div>
+    <div class="nav-btn">&#9711;</div>
+    <div class="nav-btn">&#9664;</div>
+  </div>
+
+</div><!-- /phone -->
+
+<!-- ════════════════════════════════════════
+     EDIT FORM  (outside phone frame)
+════════════════════════════════════════ -->
+<div id="editForm">
+  <h3>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+         stroke="#f5c300" stroke-width="2.5">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+    Edit Receipt Fields
+  </h3>
+
+  <div class="form-grid">
+    <div class="form-group">
+      <label>TID</label>
+      <input type="text" id="inTid" value="384097766" oninput="liveUpdate()">
+    </div>
+    <div class="form-group">
+      <label>Fee</label>
+      <input type="text" id="inFee" value="0.00" oninput="liveUpdate()">
+    </div>
+    <div class="form-group">
+      <label>Date</label>
+      <input type="text" id="inDate" value="May 20, 2026" oninput="liveUpdate()">
+    </div>
+    <div class="form-group">
+      <label>Time</label>
+      <input type="text" id="inTime" value="11:46" oninput="liveUpdate()">
+    </div>
+    <div class="form-group">
+      <label>Amount (Rs.)</label>
+      <input type="text" id="inAmt" value="500" oninput="liveUpdate()">
+    </div>
+    <div class="form-group">
+      <label>Decimals</label>
+      <input type="text" id="inCents" value="00" oninput="liveUpdate()">
+    </div>
+    <div class="form-group full">
+      <label>To — Name</label>
+      <input type="text" id="inToName" value="Muhammad Yaser" oninput="liveUpdate()">
+    </div>
+    <div class="form-group full">
+      <label>To — Number</label>
+      <input type="text" id="inToNum" value="03710614607" oninput="liveUpdate()">
+    </div>
+    <div class="form-group full">
+      <label>From — Name</label>
+      <input type="text" id="inFromName" value="Shawaiz Aawan" oninput="liveUpdate()">
+    </div>
+    <div class="form-group full">
+      <label>From — Number</label>
+      <input type="text" id="inFromNum" value="03033655302" oninput="liveUpdate()">
+    </div>
+  </div>
+
+  <button id="saveImgBtn" onclick="saveReceipt()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111"
+         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+      <circle cx="8.5" cy="8.5" r="1.5"/>
+      <polyline points="21 15 16 10 5 21"/>
+    </svg>
+    Save as Image (PNG)
+  </button>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   LOGO HANDLER — avoids tainted canvas
+   Reads local image as base64 so html2canvas
+   can export without SecurityError
+════════════════════════════════════════ */
+const LOGO_STORAGE_KEY = 'jcLogoBase64';
+const DEFAULT_LOGO_PATH = 'C:\\Users\\user\\Desktop\\screen\\download.png';
+
+(function initLogo() {
+  const logo = document.getElementById('jcLogo');
+  if (!logo) return;
+
+  // 1) Check localStorage first (user already picked it before)
+  const cached = localStorage.getItem(LOGO_STORAGE_KEY);
+  if (cached) {
+    logo.src = cached;
+    return;
+  }
+
+  // 2) Try loading from default path and auto-convert to base64
+  try {
+    const img = new Image();
+    img.onload = function () {
+      try {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        const base64 = c.toDataURL('image/png');
+        logo.src = base64;
+        localStorage.setItem(LOGO_STORAGE_KEY, base64);
+      } catch (e) {
+        // Canvas tainted — show picker
+        logo.src = DEFAULT_LOGO_PATH;
+        showLogoPicker();
+      }
+    };
+    img.onerror = function () {
+      // Path not accessible — show picker
+      showLogoPicker();
+    };
+    img.src = DEFAULT_LOGO_PATH;
+  } catch (e) {
+    showLogoPicker();
+  }
+})();
+
+function showLogoPicker() {
+  const phone = document.getElementById('phone');
+  // Only show picker once
+  if (document.getElementById('_logoPickerWrap')) return;
+
+  const wrap = document.createElement('div');
+  wrap.id = '_logoPickerWrap';
+  wrap.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;';
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#222;border-radius:14px;padding:28px 32px;text-align:center;max-width:340px;margin:16px;';
+
+  const h = document.createElement('p');
+  h.style.cssText = 'color:#f5c300;font-size:15px;font-weight:700;margin-bottom:8px;';
+  h.textContent = 'Select JazzCash Logo';
+
+  const p = document.createElement('p');
+  p.style.cssText = 'color:#aaa;font-size:12px;margin-bottom:18px;line-height:1.5;';
+  p.textContent = 'Tap the button below to pick your JazzCash logo PNG. This only needs to be done once.';
+
+  const btn = document.createElement('label');
+  btn.style.cssText = 'display:inline-block;background:#f5c300;color:#111;font-weight:700;padding:10px 28px;border-radius:50px;cursor:pointer;font-size:14px;';
+  btn.textContent = 'Choose Logo Image';
+
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  inp.style.display = 'none';
+  inp.addEventListener('change', function () {
+    if (!inp.files[0]) return;
+    const reader = new FileReader();
+    reader.onloadend = function () {
+      const base64 = reader.result;
+      document.getElementById('jcLogo').src = base64;
+      localStorage.setItem(LOGO_STORAGE_KEY, base64);
+      wrap.remove();
+    };
+    reader.readAsDataURL(inp.files[0]);
+  });
+
+  btn.appendChild(inp);
+  box.appendChild(h);
+  box.appendChild(p);
+  box.appendChild(btn);
+  wrap.appendChild(box);
+  document.body.appendChild(wrap);
+}
+
+/* ── Live clock ── */
+function updateClock() {
+  const now  = new Date();
+  let h = now.getHours(), m = now.getMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  document.getElementById('liveClock').textContent =
+    `${h}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+/* ── Battery ── */
+if (navigator.getBattery) {
+  navigator.getBattery().then(b => {
+    const set = () => {
+      const p = Math.round(b.level * 100);
+      document.getElementById('battPct').textContent  = p;
+      document.getElementById('battFill').style.width = (p * 16 / 100) + 'px';
+    };
+    set();
+    b.addEventListener('levelchange', set);
+  });
+}
+
+/* ── Position side notches exactly at the dashed-line row ── */
+function positionNotches() {
+  const wrapper  = document.getElementById('receiptWrapper');
+  const notchRow = document.getElementById('notchRow');
+  const nL       = document.getElementById('notchLeft');
+  const nR       = document.getElementById('notchRight');
+  if (!wrapper || !notchRow) return;
+
+  const wRect = wrapper.getBoundingClientRect();
+  const nRect = notchRow.getBoundingClientRect();
+
+  // Vertical center of the notchRow relative to receiptWrapper top
+  const centerY = nRect.top + nRect.height / 2 - wRect.top;
+
+  nL.style.top = centerY + 'px';
+  nR.style.top = centerY + 'px';
+}
+
+window.addEventListener('load',   positionNotches);
+window.addEventListener('resize', positionNotches);
+
+/* ── Live update receipt from form inputs ── */
+function liveUpdate() {
+  document.getElementById('dispTid').textContent      = document.getElementById('inTid').value;
+  document.getElementById('dispDate').textContent     = document.getElementById('inDate').value;
+  document.getElementById('dispTime').textContent     = document.getElementById('inTime').value;
+  document.getElementById('dispAmt').textContent      = document.getElementById('inAmt').value;
+  document.getElementById('dispCents').textContent    = document.getElementById('inCents').value;
+  document.getElementById('dispFee').textContent      = document.getElementById('inFee').value;
+  document.getElementById('dispToName').textContent   = document.getElementById('inToName').value;
+  document.getElementById('dispToNum').textContent    = document.getElementById('inToNum').value;
+  document.getElementById('dispFromName').textContent = document.getElementById('inFromName').value;
+  document.getElementById('dispFromNum').textContent  = document.getElementById('inFromNum').value;
+  setTimeout(positionNotches, 60);
+}
+
+/* ── Save ONLY the phone frame as PNG ── */
+function saveReceipt() {
+  const phone = document.getElementById('phone');
+  html2canvas(phone, {
+    scale: 3,
+    backgroundColor: '#1a1a1a',
+    useCORS: true,
+    allowTaint: false,
+    logging: false,
+    scrollX: 0,
+    scrollY: 0,
+    width: phone.offsetWidth,
+    height: phone.offsetHeight,
+    windowWidth: phone.offsetWidth,
+    windowHeight: phone.offsetHeight
+  }).then(canvas => {
+    const link = document.createElement('a');
+    link.download = 'jazzcash_receipt.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }).catch(function (e) {
+    console.error('Save failed:', e);
+    localStorage.removeItem(LOGO_STORAGE_KEY);
+    showLogoPicker();
+  });
+}
+
+/* ── Share ── */
+async function shareReceipt() {
+  if (!navigator.share) {
+    alert('Web Share API is not supported in this browser.');
+    return;
+  }
+  try {
+    const phone = document.getElementById('phone');
+    const canvas = await html2canvas(phone, {
+      scale: 3, backgroundColor: '#1a1a1a',
+      useCORS: true, allowTaint: false, logging: false,
+      width: phone.offsetWidth, height: phone.offsetHeight
+    });
+    canvas.toBlob(async blob => {
+      const file = new File([blob], 'jazzcash_receipt.png', { type: 'image/png' });
+      await navigator.share({ files: [file], title: 'JazzCash Receipt' });
+    });
+  } catch (e) {
+    console.error('Share failed:', e);
+    localStorage.removeItem(LOGO_STORAGE_KEY);
+    showLogoPicker();
+  }
+}
+</script>
+</body>
+</html>
